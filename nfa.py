@@ -1,4 +1,4 @@
-from regex import RegEx, RegExTree, Operation
+from astTree import RegEx, RegExTree, Operation
 
 
 class State:
@@ -20,15 +20,17 @@ class NFA:
         self.start_state = start_state
         self.accept_states = accept_states
 
-    def tree_to_nfa(self, tree : RegExTree) -> 'NFA':
+
+    @staticmethod
+    def tree_to_nfa(tree : RegExTree) -> 'NFA':
         if tree.root == Operation.CONCAT:
-            left = self.tree_to_nfa(tree.subTrees[0])
-            right = self.tree_to_nfa(tree.subTrees[1])
+            left = NFA.tree_to_nfa(tree.subTrees[0])
+            right = NFA.tree_to_nfa(tree.subTrees[1])
             left.accept_states.add_epsilon(right.start_state)
             return NFA(left.start_state, right.accept_states)
         elif tree.root == Operation.ALTERN:
-            left = self.tree_to_nfa(tree.subTrees[0])
-            right = self.tree_to_nfa(tree.subTrees[1])
+            left = NFA.tree_to_nfa(tree.subTrees[0])
+            right = NFA.tree_to_nfa(tree.subTrees[1])
             start = State()
             accept = State()
             start.add_epsilon(left.start_state, right.start_state)
@@ -37,7 +39,7 @@ class NFA:
             return NFA(start, accept)
 
         elif tree.root == Operation.ETOILE:
-            sub_nfa = self.tree_to_nfa(tree.subTrees[0])
+            sub_nfa = NFA.tree_to_nfa(tree.subTrees[0])
             start = State()
             accept = State()
             start.add_epsilon(sub_nfa.start_state, accept)
@@ -45,10 +47,20 @@ class NFA:
             return NFA(start, accept)
 
         elif tree.root == Operation.PLUS:
-            sub_nfa = self.tree_to_nfa(tree.subTrees[0])
+            sub_nfa = NFA.tree_to_nfa(tree.subTrees[0])
             start = State()
             accept = State()
             start.add_epsilon(sub_nfa.start_state)
             sub_nfa.accept_states.add_epsilon(sub_nfa.start_state, accept)
             return NFA(start, accept)
+        elif isinstance(tree.root, str):
+            # ← this is critical
+            start = State()
+            accept = State()
+            start.add_transition(tree.root, accept)
+            return NFA(start, accept)
+
+        else:
+            raise ValueError(f"Unsupported tree node: {tree.root}")
+
 
