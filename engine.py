@@ -27,9 +27,36 @@ def nfa_match(nfa : 'NFA', string: str):
     return nfa.accept_states in current_states
 
 
-# Regex: "a"
-regex_str = "a+"
-parser = RegEx(regex_str)
-tree = parser.parse()
-nfa = NFA.tree_to_nfa(tree)
-print(nfa_match(nfa, "aaaaaa"))  # True
+# # Regex: "a"
+# regex_str = "S(a|g|r)+on"
+# parser = RegEx(regex_str)
+# tree = parser.parse()
+# nfa = NFA.tree_to_nfa(tree)
+# print(nfa_match(nfa, "Saon"))  # True
+if __name__ == "__main__":
+    regex_str = input("Enter a regex: ")
+    parser = RegEx(regex_str)
+    try:
+        tree = parser.parse()
+        print("Parsed tree:", tree)
+        nfa = NFA.tree_to_nfa(tree)
+        while(1):
+            test_str = input("('exit' to quit, 'regex' to ask for another regex)\n Enter a string to test: ")
+            if test_str == 'exit':
+                exit(0)
+            if test_str == 'regex':
+                regex_str = input("Enter a regex: ")
+                parser = RegEx(regex_str)
+                try:
+                    tree = parser.parse()
+                    print("Parsed tree:", tree)
+                    nfa = NFA.tree_to_nfa(tree)
+                except Exception as e:
+                    print("Error parsing regex:", e)
+                continue
+            if nfa_match(nfa, test_str):
+                print(f"The string '{test_str}' is accepted by the regex '{regex_str}'")
+            else:
+                print(f"The string '{test_str}' is NOT accepted by the regex '{regex_str}'")
+    except Exception as e:
+        print("Error parsing regex:", e)
