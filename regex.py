@@ -230,6 +230,5 @@ if __name__ == "__main__":
     try:
         tree = parser.parse()
         print("Parsed tree:", tree)
-        print("Tree structure:", str(tree))
     except Exception as e:
         print("Error parsing regex:", e)
