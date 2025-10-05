@@ -1,145 +1,242 @@
 from astTree import RegEx, RegExTree, Operation
 
-class State:
-    def __init__(self):
-        self.transitions = {}  # char -> set of states
-        self.epsilon_transitions = set()  # set of states
-
-    def add_transition(self, char, state):
-        if char not in self.transitions:
-            self.transitions[char] = set()
-        self.transitions[char].add(state)
-
-    def add_epsilon(self, *states):
-        self.epsilon_transitions.update(states)
-
 
 class NFA:
-    def __init__(self, start_state: State, accept_states: State):
-        self.start_state = start_state
-        self.accept_states = accept_states
+    def __init__(self, regex: RegExTree):
+        self.regex = regex
+        self.state_counter = 0
+        self.alphabet = self.extract_alphabet(regex)
 
+        # Build NFA using Thompson's construction
+        self.initial_state, self.final_state, self.transitions = self.build_nfa(regex)
 
-    @staticmethod
-    def tree_to_nfa(tree : RegExTree) -> 'NFA':
-        if tree.root == Operation.CONCAT:
-            left = NFA.tree_to_nfa(tree.subTrees[0])
-            right = NFA.tree_to_nfa(tree.subTrees[1])
-            left.accept_states.add_epsilon(right.start_state)
-            return NFA(left.start_state, right.accept_states)
+        # Get all states
+        self.states = self.get_all_states()
+
+        # Build transition table
+        self.transition_table = self.build_transition_table()
+
+    # -----------------------------
+    # State generator
+    # -----------------------------
+    def new_state(self):
+        """Generate a new unique state ID"""
+        state_id = f"q{self.state_counter}"
+        self.state_counter += 1
+        return state_id
+
+    # -----------------------------
+    # Extract alphabet from AST
+    # -----------------------------
+    def extract_alphabet(self, tree: RegExTree) -> set:
+        """Extract all literal characters from the regex tree"""
+        alphabet = set()
+        if isinstance(tree.root, str):  # Literal character
+            alphabet.add(tree.root)
+        for subtree in tree.subTrees:
+            alphabet |= self.extract_alphabet(subtree)
+        return alphabet
+
+    # -----------------------------
+    # Build NFA using Thompson's Construction
+    # -----------------------------
+    def build_nfa(self, tree: RegExTree):
+        """
+        Build NFA fragment for a tree node.
+        Returns (start_state, end_state, transitions)
+        transitions is a dict: {from_state: {symbol: [to_states]}}
+        """
+        transitions = {}
+
+        def add_transition(from_state, to_state, symbol):
+            """Add a transition to the transitions dict"""
+            if from_state not in transitions:
+                transitions[from_state] = {}
+            if symbol not in transitions[from_state]:
+                transitions[from_state][symbol] = []
+            transitions[from_state][symbol].append(to_state)
+
+        # Base case: literal character
+        if isinstance(tree.root, str):
+            start = self.new_state()
+            end = self.new_state()
+            add_transition(start, end, tree.root)
+            return start, end, transitions
+
+        # CONCAT operation
+        elif tree.root == Operation.CONCAT:
+            # Build left subtree
+            left_start, left_end, left_trans = self.build_nfa(tree.subTrees[0])
+            transitions.update(left_trans)
+
+            # Build right subtree
+            right_start, right_end, right_trans = self.build_nfa(tree.subTrees[1])
+            transitions.update(right_trans)
+
+            # Connect left end to right start with epsilon
+            add_transition(left_end, right_start, 'ε')
+
+            return left_start, right_end, transitions
+
+        # ALTERN (|) operation
         elif tree.root == Operation.ALTERN:
-            left = NFA.tree_to_nfa(tree.subTrees[0])
-            right = NFA.tree_to_nfa(tree.subTrees[1])
-            start = State()
-            accept = State()
-            start.add_epsilon(left.start_state, right.start_state)
-            left.accept_states.add_epsilon(accept)
-            right.accept_states.add_epsilon(accept)
-            return NFA(start, accept)
+            start = self.new_state()
+            end = self.new_state()
 
+            # Build both alternatives
+            left_start, left_end, left_trans = self.build_nfa(tree.subTrees[0])
+            transitions.update(left_trans)
+
+            right_start, right_end, right_trans = self.build_nfa(tree.subTrees[1])
+            transitions.update(right_trans)
+
+            # Connect start to both alternatives with epsilon
+            add_transition(start, left_start, 'ε')
+            add_transition(start, right_start, 'ε')
+
+            # Connect both ends to final state with epsilon
+            add_transition(left_end, end, 'ε')
+            add_transition(right_end, end, 'ε')
+
+            return start, end, transitions
+
+        # ETOILE (*) operation
         elif tree.root == Operation.ETOILE:
-            sub_nfa = NFA.tree_to_nfa(tree.subTrees[0])
-            start = State()
-            accept = State()
-            start.add_epsilon(sub_nfa.start_state, accept)
-            sub_nfa.accept_states.add_epsilon(sub_nfa.start_state, accept)
-            return NFA(start, accept)
+            start = self.new_state()
+            end = self.new_state()
 
+            # Build subtree
+            sub_start, sub_end, sub_trans = self.build_nfa(tree.subTrees[0])
+            transitions.update(sub_trans)
+
+            # Epsilon from start to sub_start (one or more times)
+            add_transition(start, sub_start, 'ε')
+
+            # Epsilon from sub_end back to sub_start (loop)
+            add_transition(sub_end, sub_start, 'ε')
+
+            # Epsilon from sub_end to end (exit)
+            add_transition(sub_end, end, 'ε')
+
+            # Epsilon from start to end (zero times)
+            add_transition(start, end, 'ε')
+
+            return start, end, transitions
+
+        # PLUS (+) operation
         elif tree.root == Operation.PLUS:
-            sub_nfa = NFA.tree_to_nfa(tree.subTrees[0])
-            start = State()
-            accept = State()
-            start.add_epsilon(sub_nfa.start_state)
-            sub_nfa.accept_states.add_epsilon(sub_nfa.start_state, accept)
-            return NFA(start, accept)
-        elif isinstance(tree.root, str):
-            # ← this is critical
-            start = State()
-            accept = State()
-            start.add_transition(tree.root, accept)
-            return NFA(start, accept)
+            start = self.new_state()
+            end = self.new_state()
+
+            # Build subtree
+            sub_start, sub_end, sub_trans = self.build_nfa(tree.subTrees[0])
+            transitions.update(sub_trans)
+
+            # Epsilon from start to sub_start (at least once)
+            add_transition(start, sub_start, 'ε')
+
+            # Epsilon from sub_end back to sub_start (loop)
+            add_transition(sub_end, sub_start, 'ε')
+
+            # Epsilon from sub_end to end (exit)
+            add_transition(sub_end, end, 'ε')
+
+            return start, end, transitions
+
+        # PROTECTION (just unwrap)
+        elif tree.root == Operation.PROTECTION:
+            return self.build_nfa(tree.subTrees[0])
 
         else:
-            raise ValueError(f"Unsupported tree node: {tree.root}")
+            raise Exception(f"Unknown operation: {tree.root}")
 
-    def nfa_to_dfa(self, alphabet):
-        start_set = epsilon_closure({self.start_state})
-        dfa_states = {frozenset(start_set): State()}  # map NFA sets → DFA state
-        unmarked = [frozenset(start_set)]  # DFA states to process
-        dfa_start = dfa_states[frozenset(start_set)]
+    # -----------------------------
+    # Get all states
+    # -----------------------------
+    def get_all_states(self):
+        """Extract all unique states from transitions"""
+        states = set()
+        states.add(self.initial_state)
+        states.add(self.final_state)
 
-        while unmarked:
-            current_set = unmarked.pop()
-            current_dfa_state = dfa_states[current_set]
+        for from_state, transitions in self.transitions.items():
+            states.add(from_state)
+            for symbol, to_states in transitions.items():
+                states.update(to_states)
 
-            for char in alphabet:
-                # find all NFA states reachable from current_set via char
-                next_set = set()
-                for nfa_state in current_set:
-                    if char in nfa_state.transitions:
-                        next_set.update(nfa_state.transitions[char])
-                next_set = epsilon_closure(next_set)
-                frozen_next = frozenset(next_set)
-                if frozen_next not in dfa_states:
-                    dfa_states[frozen_next] = State()
-                    unmarked.append(frozen_next)
-                # add DFA transition
-                current_dfa_state.add_transition(char, dfa_states[frozen_next])
+        return sorted(states, key=lambda x: int(x[1:]))
 
-        # determine DFA accepting states
-        dfa_accepts = {state for nfa_set, state in dfa_states.items() if self.accept_states in nfa_set}
+    # -----------------------------
+    # Build transition table
+    # -----------------------------
+    def build_transition_table(self):
+        """
+        Build a transition table as a dictionary:
+        {state: {symbol: [next_states]}}
+        """
+        table = {}
 
-        return dfa_start, dfa_accepts
+        # Initialize all states
+        for state in self.states:
+            table[state] = {symbol: [] for symbol in self.alphabet}
+            table[state]['ε'] = []  # Epsilon transitions
 
-    def dfa_match(dfa_start, dfa_accepts, string):
-        current_state = dfa_start
-        for char in string:
-            if char not in current_state.transitions:
-                return False
-            # deterministic → only one next state
-            current_state = next(iter(current_state.transitions[char]))
-        return current_state in dfa_accepts
+        # Fill in transitions
+        for from_state, trans in self.transitions.items():
+            for symbol, to_states in trans.items():
+                table[from_state][symbol] = to_states
 
-    def get_alphabet(nfa):
-        seen = set()
-        stack = [nfa.start_state]
-        visited = set()
+        return table
 
-        while stack:
-            state = stack.pop()
-            if state in visited:
-                continue
-            visited.add(state)
+    # -----------------------------
+    # Display methods
+    # -----------------------------
+    def display_transition_table(self):
+        """Print the transition table in a readable format"""
+        print("\n=== NFA Transition Table ===")
+        print(f"Initial state: {self.initial_state}")
+        print(f"Final state: {self.final_state}")
+        print(f"Alphabet: {sorted(self.alphabet)}")
+        print(f"\nStates: {self.states}\n")
 
-            for char, next_states in state.transitions.items():
-                seen.add(char)
-                stack.extend(next_states)
+        # Header
+        symbols = sorted(self.alphabet) + ['ε']
+        header = f"{'State':<8} | " + " | ".join(f"{s:<10}" for s in symbols)
+        print(header)
+        print("-" * len(header))
 
-            stack.extend(state.epsilon_transitions)
+        # Rows
+        for state in self.states:
+            marker = "*" if state == self.initial_state else " "
+            marker += ">" if state == self.final_state else " "
+            row = f"{state:<6}{marker} | "
 
-        return seen
+            for symbol in symbols:
+                targets = self.transition_table[state].get(symbol, [])
+                targets_str = ",".join(targets) if targets else "∅"
+                row += f"{targets_str:<10} | "
 
-def epsilon_closure(states):
-    """Return the set of states reachable from `states` via epsilon moves."""
-    stack = list(states)
-    closure = set(states)
-    while stack:
-        state = stack.pop()
-        for next_state in state.epsilon_transitions:
-            if next_state not in closure:
-                closure.add(next_state)
-                stack.append(next_state)
-    return closure
+            print(row)
 
-def nfa_match(nfa: 'NFA', string: str):
-    """Return True if the NFA accepts the string."""
-    current_states = epsilon_closure({nfa.start_state})
+    def __str__(self):
+        """String representation of the NFA"""
+        return f"NFA(states={len(self.states)}, alphabet={self.alphabet})"
 
-    for char in string:
-        next_states = set()
-        for state in current_states:
-            if char in state.transitions:
-                next_states.update(state.transitions[char])
-        current_states = epsilon_closure(next_states)
 
-    return nfa.accept_states in current_states
+# Test the NFA builder
+if __name__ == "__main__":
+    regex_str = input("Enter a regex: ")
+    parser = RegEx(regex_str)
+
+    try:
+        tree = parser.parse()
+        print("Parsed tree:", tree)
+
+        nfa = NFA(tree)
+        nfa.display_transition_table()
+
+    except Exception as e:
+        print("Error:", e)
+        import traceback
+
+        traceback.print_exc()

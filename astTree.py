@@ -15,6 +15,7 @@ class RegExTree:
     def __init__(self, root: Operation, subTrees: List['RegExTree'] = []):
         self.root = root
         self.subTrees = subTrees
+        self.id = ""
 
     def rootToString(self) -> str:
         if self.root == Operation.CONCAT:
