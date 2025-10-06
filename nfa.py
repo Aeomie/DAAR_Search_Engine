@@ -4,11 +4,11 @@ from astTree import RegEx, RegExTree, Operation
 class NFA:
     def __init__(self, regex: RegExTree):
         self.regex = regex
-        self.state_counter = 0
+        self.node_counter = 0
         self.alphabet = self.extract_alphabet(regex)
 
         # Build NFA using Thompson's construction
-        self.initial_state, self.final_state, self.transitions = self.build_nfa(regex)
+        self.start_state, self.final_state, self.transitions = self.build_nfa(regex)
 
         # Get all states
         self.states = self.get_all_states()
@@ -19,10 +19,10 @@ class NFA:
     # -----------------------------
     # State generator
     # -----------------------------
-    def new_state(self):
+    def new_node(self):
         """Generate a new unique state ID"""
-        state_id = f"q{self.state_counter}"
-        self.state_counter += 1
+        state_id = f"q{self.node_counter}"
+        self.node_counter += 1
         return state_id
 
     # -----------------------------
@@ -58,8 +58,8 @@ class NFA:
 
         # Base case: literal character
         if isinstance(tree.root, str):
-            start = self.new_state()
-            end = self.new_state()
+            start = self.new_node()
+            end = self.new_node()
             add_transition(start, end, tree.root)
             return start, end, transitions
 
@@ -73,15 +73,15 @@ class NFA:
             right_start, right_end, right_trans = self.build_nfa(tree.subTrees[1])
             transitions.update(right_trans)
 
-            # Connect left end to right start with epsilon
+            # Connect left end to right start with epsilon²
             add_transition(left_end, right_start, 'ε')
 
             return left_start, right_end, transitions
 
         # ALTERN (|) operation
         elif tree.root == Operation.ALTERN:
-            start = self.new_state()
-            end = self.new_state()
+            start = self.new_node()
+            end = self.new_node()
 
             # Build both alternatives
             left_start, left_end, left_trans = self.build_nfa(tree.subTrees[0])
@@ -102,8 +102,8 @@ class NFA:
 
         # ETOILE (*) operation
         elif tree.root == Operation.ETOILE:
-            start = self.new_state()
-            end = self.new_state()
+            start = self.new_node()
+            end = self.new_node()
 
             # Build subtree
             sub_start, sub_end, sub_trans = self.build_nfa(tree.subTrees[0])
@@ -125,8 +125,8 @@ class NFA:
 
         # PLUS (+) operation
         elif tree.root == Operation.PLUS:
-            start = self.new_state()
-            end = self.new_state()
+            start = self.new_node()
+            end = self.new_node()
 
             # Build subtree
             sub_start, sub_end, sub_trans = self.build_nfa(tree.subTrees[0])
@@ -153,18 +153,18 @@ class NFA:
     # -----------------------------
     # Get all states
     # -----------------------------
+    """Extract all states from transitions & orders them"""
     def get_all_states(self):
-        """Extract all unique states from transitions"""
         states = set()
-        states.add(self.initial_state)
+        states.add(self.start_state)
         states.add(self.final_state)
 
-        for from_state, transitions in self.transitions.items():
+        for from_state, node_transitions in self.transitions.items():
             states.add(from_state)
-            for symbol, to_states in transitions.items():
+            for symbol, to_states in node_transitions.items():
                 states.update(to_states)
 
-        return sorted(states, key=lambda x: int(x[1:]))
+        return sorted(states, key=lambda x: int(x[1:])) # takes the second and sorts them , like in q10 it takes 10
 
     # -----------------------------
     # Build transition table
@@ -194,7 +194,7 @@ class NFA:
     def display_transition_table(self):
         """Print the transition table in a readable format"""
         print("\n=== NFA Transition Table ===")
-        print(f"Initial state: {self.initial_state}")
+        print(f"Initial state: {self.start_state}")
         print(f"Final state: {self.final_state}")
         print(f"Alphabet: {sorted(self.alphabet)}")
         print(f"\nStates: {self.states}\n")
@@ -207,7 +207,7 @@ class NFA:
 
         # Rows
         for state in self.states:
-            marker = "*" if state == self.initial_state else " "
+            marker = "*" if state == self.start_state else " "
             marker += ">" if state == self.final_state else " "
             row = f"{state:<6}{marker} | "
 
@@ -217,6 +217,7 @@ class NFA:
                 row += f"{targets_str:<10} | "
 
             print(row)
+        print("* for start node , > for the final node")
 
     def __str__(self):
         """String representation of the NFA"""
@@ -234,6 +235,9 @@ if __name__ == "__main__":
 
         nfa = NFA(tree)
         nfa.display_transition_table()
+
+        print("just test")
+        print("nfa : " , nfa)
 
     except Exception as e:
         print("Error:", e)
