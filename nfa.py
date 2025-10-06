@@ -5,8 +5,7 @@ class NFA:
     def __init__(self, regex: RegExTree):
         self.regex = regex
         self.node_counter = 0
-        self.alphabet = self.extract_alphabet(regex)
-
+        self.alphabet = []
         # Build NFA using Thompson's construction
         self.start_state, self.final_state, self.transitions = self.build_nfa(regex)
 
@@ -24,18 +23,6 @@ class NFA:
         state_id = f"q{self.node_counter}"
         self.node_counter += 1
         return state_id
-
-    # -----------------------------
-    # Extract alphabet from AST
-    # -----------------------------
-    def extract_alphabet(self, tree: RegExTree) -> set:
-        """Extract all literal characters from the regex tree"""
-        alphabet = set()
-        if isinstance(tree.root, str):  # Literal character
-            alphabet.add(tree.root)
-        for subtree in tree.subTrees:
-            alphabet |= self.extract_alphabet(subtree)
-        return alphabet
 
     # -----------------------------
     # Build NFA using Thompson's Construction
@@ -60,7 +47,9 @@ class NFA:
         if isinstance(tree.root, str):
             start = self.new_node()
             end = self.new_node()
+            self.alphabet.append(tree.root)  # Add to alphabet
             add_transition(start, end, tree.root)
+
             return start, end, transitions
 
         # CONCAT operation
@@ -185,6 +174,7 @@ class NFA:
         for from_state, trans in self.transitions.items():
             for symbol, to_states in trans.items():
                 table[from_state][symbol] = to_states
+                print("from_state :", from_state , " symbol : " , symbol , " to_states : " , to_states)
 
         return table
 
@@ -238,6 +228,7 @@ if __name__ == "__main__":
 
         print("just test")
         print("nfa : " , nfa)
+
 
     except Exception as e:
         print("Error:", e)
