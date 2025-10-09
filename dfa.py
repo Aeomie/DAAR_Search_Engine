@@ -95,7 +95,7 @@ class DFA:
     # -----------------------------
     # Match word using DFA
     # -----------------------------
-    def match_dfa(self, text: str) -> tuple[list[tuple[str, int]], int]:
+    def match_dfa(self, text: str, max_matches: int = 0):
         """
         Find all substrings in `text` that are accepted by the DFA.
         Returns a list of tuples: (matched_substring, start_index)
@@ -105,6 +105,9 @@ class DFA:
         for start in range(len(text)):
             current_state = self.start_state
             for end in range(start, len(text)):
+                if max_matches != 0 and len(matches) >= max_matches:
+                    return matches, len(matches)
+
                 char = text[end]
                 if char not in self.alphabet:
                     break  # stop this substring
@@ -112,26 +115,7 @@ class DFA:
                 if not current_state:
                     break  # dead end
                 if current_state in self.final_states:
-                    matches.append((text[start:end + 1], start))
+                    matches.append(start) # Just store the start index
+                    # If you want the actual matched substring, uncomment the next line
+                    #matches.append((text[start:end + 1], start))
         return matches, len(matches)
-
-
-if __name__ == "__main__":
-    regex_str = input("Enter a regex: ")
-
-    try:
-        nfa = NFA(regex_str)
-        nfa.display_transition_table()
-
-        dfa = DFA(nfa)
-        dfa.display_transition_table()
-        while True:
-            word = input("(exit) to exit \n"
-                         "Enter a word to match:")
-            if word == "exit ":
-                break
-            result = dfa.match_dfa(word)
-            print("Matches found:", result)
-
-    except Exception as e:
-        print("Error:", e)

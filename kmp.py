@@ -25,7 +25,7 @@ class KMP:
                     i += 1
         return lps
 
-    def kmp(self, text):
+    def kmp(self, text, max_matches = 0):
         n = len(text)
         match = len(self.pattern)
         i = j = 0
@@ -33,12 +33,13 @@ class KMP:
         word_indexes = []
 
         while i < n:
+            if word_counter >= max_matches and max_matches != 0:
+                break
             if self.pattern[j] == text[i]:
                 i += 1
                 j += 1
 
             if j == match:
-                print("Pattern found at index " + str(i - j))
                 word_counter += 1
                 word_indexes.append(i - j)
                 j = self.lps[j - 1]
@@ -50,13 +51,3 @@ class KMP:
                         i += 1
         return word_indexes , word_counter
 
-
-
-text = "ABC_ABCDAB_ABCDABCDABDE"
-pattern = "ABC"
-
-matcher = KMP(pattern)
-print("LPS Table:", matcher.lps)
-indexes,count = matcher.kmp(text)
-print("Total matches found:", count)
-print("indexes of matches:", indexes)

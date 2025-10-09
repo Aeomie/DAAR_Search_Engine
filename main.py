@@ -7,6 +7,11 @@ import os
 import re
 import argparse
 from typing import Iterable, Iterator, Optional, Tuple
+from kmp import KMP
+from nfa import NFA
+from dfa import DFA
+from boyer_moore import Boyer
+
 
 # ============================================================
 # Démo : moteur temporaire basé sur re.search
@@ -21,32 +26,61 @@ _DEMO_STATE = {"pattern": None}
 
 _engine = None  # stockage global provisoire
 
-def compile_engine(pattern: str) -> None:
-    """
-    démo : on enregistre juste le motif pour re.search.
-    """
-    if DEMO:
-        _DEMO_STATE["pattern"] = pattern
-        return
-    raise NotImplementedError("non implémentée")
+# ============================================================
+# ENGINE FUNCTION
+# ============================================================
 
-
-def matches_line(line: str, ignore_case: bool = False) -> bool:
+def engine(pattern: str, file_to_run: str, mode: str,max_matches : int = 0, line_number : bool = False, ignore_case: bool = False) -> None:
     """
-    Teste si la ligne contient un *suffixe* qui matche (comportement egrep).
-    démo : re.search(pattern, line, flags).
+    Build and run the chosen engine on the given file.
     """
-    if DEMO:
-        pat = _DEMO_STATE.get("pattern")
-        if pat is None:
-            raise RuntimeError("compile_engine() doit être appelé avant matches_line().")
-        flags = re.IGNORECASE if ignore_case else 0
-        return re.search(pat, line, flags) is not None
-    raise NotImplementedError("non implémenté")
+    # Build the matcher
+    match mode:
+        case "kmp":
+            matcher = KMP(pattern)
+        case "boyer":
+            matcher = Boyer(pattern)
+        case "regex":
+            nfa = NFA(pattern)
+            matcher = DFA(nfa)
+        case _:
+            raise ValueError(f"Unknown mode: {mode}")
 
+    print("Engine built successfully.\n")
+
+    all_indexes = []
+    total_count = 0
+    remaining = max_matches
+    with open(file_to_run, "r", encoding="utf-8", errors="replace") as f:
+        for i, line in enumerate(f, start=1):
+            line_proc = line.strip()
+            if ignore_case:
+                line_proc = line_proc.lower()
+            match mode:
+                case "kmp":
+                    indexes, count = matcher.kmp(line_proc, max_matches)
+                case "boyer":
+                    indexes, count = matcher.match_boyer(line_proc, max_matches)
+                case "regex":
+                    indexes, count = matcher.match_dfa(line_proc, max_matches)
+            if count == 0:
+                continue
+            if line_number:
+                print(f"Line {i}: Total matches found: {count}")
+                print(f"Indexes of matches: {indexes}\n")
+            else:
+                all_indexes.extend(indexes)
+                total_count += count
+
+            remaining -= count
+            if max_matches > 0 and remaining <= 0:
+                break
+
+    if not line_number:
+        print(f" Total matches found: {total_count} \n Indexes : {all_indexes}")
 
 # ============================================================
-# I/O utilitaires
+# UTILITIES
 # ============================================================
 
 def open_maybe_stdin(path: str, *, encoding: str = "utf-8") -> Iterable[str]:
@@ -64,6 +98,7 @@ def enumerate_lines(lines: Iterable[str]) -> Iterator[Tuple[int, str]]:
         yield i, line
 
 
+
 # ============================================================
 # CLI
 # ============================================================
@@ -71,11 +106,13 @@ def enumerate_lines(lines: Iterable[str]) -> Iterator[Tuple[int, str]]:
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="myegrep",
-        description="Clone d’egrep (ERE restreinte).",
+        description="Clone d’egrep utilisant KMP, Boyer–Moore ou DFA (regex).",
         allow_abbrev=False,
     )
-    p.add_argument("pattern", help="Expression régulière (ERE restreinte).")
+    p.add_argument("pattern", help="Pattern a chercher.")
     p.add_argument("file", help="Chemin du fichier texte, ou '-' pour stdin.")
+    p.add_argument("-m", "--mode", choices=["kmp", "boyer", "regex"], default="regex",
+                   help="Choisir le moteur (regex par défaut).")
     p.add_argument("-n", "--line-number", action="store_true",
                    help="Afficher le numéro de ligne.")
     p.add_argument("-i", "--ignore-case", action="store_true",
@@ -84,11 +121,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
                    help="Arrêter après N correspondances (>0).")
     p.add_argument("--dry-run", action="store_true",
                    help="N’affiche que la configuration (pas de match).")
-    p.add_argument("--encoding", default="utf-8",
-                   help="Encodage du fichier d’entrée (défaut: utf-8).")
-    # démo
-    p.add_argument("--demo", action="store_true",
-                   help="Utiliser un moteur de démonstration basé sur Python 're'.")
     p.add_argument("--version", action="version",
                    version="myegrep 0.1 (DAAR – M2 STL)")
     return p
@@ -99,73 +131,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
 # ============================================================
 
 def main(argv: Optional[list[str]] = None) -> int:
-    args_from_sys = sys.argv[1:]
-
-    # mode interactif si aucun argument
-    if len(args_from_sys) == 0:
-        print("=== Mode interactif de myegrep ===")
-        pattern = input("Veuillez entrer le motif à rechercher : ").strip()
-        filepath = input("Veuillez indiquer le fichier à analyser : ").strip()
-        argv = [pattern, filepath]
-    else:
-        argv = args_from_sys
-
     args = build_arg_parser().parse_args(argv)
 
-    # active ou non le mode démo
-    global DEMO
-    DEMO = bool(args.demo)
-
-    # vérifie d'abord l'existence du fichier (sauf stdin)
     if args.file != "-" and not os.path.exists(args.file):
         sys.stderr.write(f"[ERREUR] Fichier introuvable : {args.file}\n")
         return 2
 
-    # dry-run : affiche la config
-    if args.dry_run:
-        print(f"[dry-run] pattern={args.pattern!r} file={args.file!r} "
-              f"opts(n={args.line_number}, i={args.ignore_case}, "
-              f"max={args.max_matches}, enc={args.encoding!r}, demo={DEMO})")
-        return 0
-
-    # compilation du motif
     try:
-        compile_engine(args.pattern)
-    except NotImplementedError as e:
-        sys.stderr.write(f"[NYI] {e}\n")
-        return 2
+        pattern = args.pattern.lower() if args.ignore_case else args.pattern
+
+        engine(pattern, args.file, args.mode, args.max_matches, args.line_number,ignore_case=args.ignore_case)
     except Exception as e:
-        sys.stderr.write(f"[ERREUR] Échec compilation motif : {e}\n")
+        sys.stderr.write(f"[ERREUR] Échec : {e}\n")
         return 2
 
-    # lecture & matching
-    matches = 0
-    try:
-        for idx, line in enumerate_lines(open_maybe_stdin(args.file, encoding=args.encoding)):
-            try:
-                ok = matches_line(line, ignore_case=args.ignore_case)
-            except NotImplementedError as e:
-                sys.stderr.write(f"[NYI] {e}\n")
-                return 2
-            except Exception as e:
-                sys.stderr.write(f"[ERREUR] Matching échoué : {e}\n")
-                return 2
-
-            if ok:
-                if args.line_number:
-                    sys.stdout.write(f"{idx}:{line}")
-                else:
-                    sys.stdout.write(line)
-                matches += 1
-                if args.max_matches and matches >= args.max_matches:
-                    break
-    except OSError as e:
-        sys.stderr.write(f"[ERREUR] Lecture du fichier échouée ({args.file}) : {e}\n")
-        return 2
-
-    # codes de sortie egrep : 0 si au moins un match, 1 sinon
-    return 0 if matches > 0 else 1
-
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

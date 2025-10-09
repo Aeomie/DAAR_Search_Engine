@@ -175,7 +175,6 @@ class NFA:
         for from_state, trans in self.transitions.items():
             for symbol, to_states in trans.items():
                 table[from_state][symbol] = to_states
-                print("from_state :", from_state , " symbol : " , symbol , " to_states : " , to_states)
 
         return table
 

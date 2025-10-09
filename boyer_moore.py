@@ -13,12 +13,14 @@ class Boyer:
         return hoops
 
 
-    def match_boyer(self, text):
+    def match_boyer(self, text, max_match = 0):
         n = len(text)
         i = 0  # index in text
         word_counter = 0
         word_indexes = []
         while i <= n - self.m:
+            if word_counter >= max_match and max_match != 0:
+                break
             j = self.m - 1  # start from right of pattern
 
             # compare pattern from right to left
@@ -27,7 +29,7 @@ class Boyer:
 
             if j < 0:
                 # match found
-                print("Pattern found at index", i)
+                #print("Pattern found at index", i)
                 word_indexes.append(i)
                 word_counter += 1
                 # shift pattern completely after match or default
@@ -42,14 +44,3 @@ class Boyer:
                 i += self.hoops.get(bad_char, self.hoops['*'])
 
         return word_indexes, word_counter
-
-
-
-text = "This is a TEST"
-pattern = "TEST"
-
-matcher = Boyer(pattern)
-print("hoops:", matcher.hoops)
-indexes,count = matcher.match_boyer(text)
-print("Total matches found:", count)
-print("indexes of matches:", indexes)
