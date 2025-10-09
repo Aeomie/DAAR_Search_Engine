@@ -95,15 +95,25 @@ class DFA:
     # -----------------------------
     # Match word using DFA
     # -----------------------------
-    def match_dfa(self, word: str) -> bool:
-        current_state = self.start_state
-        for char in word:
-            if char not in self.alphabet:
-                return False
-            current_state = self.transitions.get(current_state, {}).get(char, frozenset())
-            if not current_state:
-                return False
-        return current_state in self.final_states
+    def match_dfa(self, text: str) -> tuple[list[tuple[str, int]], int]:
+        """
+        Find all substrings in `text` that are accepted by the DFA.
+        Returns a list of tuples: (matched_substring, start_index)
+        """
+        matches = []
+
+        for start in range(len(text)):
+            current_state = self.start_state
+            for end in range(start, len(text)):
+                char = text[end]
+                if char not in self.alphabet:
+                    break  # stop this substring
+                current_state = self.transitions.get(current_state, {}).get(char, frozenset())
+                if not current_state:
+                    break  # dead end
+                if current_state in self.final_states:
+                    matches.append((text[start:end + 1], start))
+        return matches, len(matches)
 
 
 if __name__ == "__main__":
@@ -120,10 +130,8 @@ if __name__ == "__main__":
                          "Enter a word to match:")
             if word == "exit ":
                 break
-            if dfa.match_dfa(word):
-                print(f"The word '{word}' is accepted by the DFA.")
-            else:
-                print(f"The word '{word}' is NOT accepted by the DFA.")
+            result = dfa.match_dfa(word)
+            print("Matches found:", result)
 
     except Exception as e:
         print("Error:", e)

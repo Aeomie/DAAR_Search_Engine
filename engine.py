@@ -1,5 +1,7 @@
 
 from kmp import KMP
+from nfa import NFA
+from dfa import DFA
 from boyer_moore import Boyer
 
 def engine(pattern:str , file_to_run:str, mode:str):
@@ -10,6 +12,9 @@ def engine(pattern:str , file_to_run:str, mode:str):
             matcher = KMP(pattern)
         case "boyer":
             matcher = Boyer(pattern)
+        case "regex":
+            nfa = NFA(pattern)
+            matcher = DFA(nfa)
     # Here you would typically run the NFA against the input file
     # For demonstration purposes, we will just print the structures
     print("NFA built successfully.")
@@ -26,6 +31,9 @@ def engine(pattern:str , file_to_run:str, mode:str):
                     indexes, count = matcher.kmp(line)
                 case "boyer":
                     indexes, count = matcher.match_boyer(line)
+                case "regex":
+                    indexes, count = matcher.match_dfa(line)
+
 
             if count > 0:
                 print(f"Line {i}: Total matches found: {count}")
@@ -33,10 +41,18 @@ def engine(pattern:str , file_to_run:str, mode:str):
 
 
 if __name__ == "__main__":
-    input_str = input("Enter the file_name: ")
-    mode_str = input("Enter the mode (kmp/boyer): ")
-    pattern = input("Enter the pattern: ").lower()
-    engine(pattern, input_str, mode_str)
+    while True:
+        print("Choose a mode: kmp, boyer, regex or exit at any point to quit \n")
+        input_str = input("Enter the file_name: ")
+        if input_str == "exit":
+            break
+        mode_str = input("Enter the mode (kmp/boyer): ")
+        if mode_str == "exit":
+            break
+        pattern = input("Enter the pattern: ").lower()
+        if pattern == "exit":
+            break
+        engine(pattern, input_str, mode_str)
 
 
 
