@@ -2,12 +2,13 @@ from astTree import RegEx, RegExTree, Operation
 
 
 class NFA:
-    def __init__(self, regex: RegExTree):
-        self.regex = regex
+    def __init__(self, regexPattern: str):
+        self.regex = RegEx(regexPattern).parse()
+        self.regexPattern = regexPattern
         self.node_counter = 0
         self.alphabet = []
         # Build NFA using Thompson's construction
-        self.start_state, self.final_state, self.transitions = self.build_nfa(regex)
+        self.start_state, self.final_state, self.transitions = self.build_nfa(self.regex)
 
         # Get all states
         self.states = self.get_all_states()
@@ -212,26 +213,3 @@ class NFA:
     def __str__(self):
         """String representation of the NFA"""
         return f"NFA(states={len(self.states)}, alphabet={self.alphabet})"
-
-
-# Test the NFA builder
-if __name__ == "__main__":
-    regex_str = input("Enter a regex: ")
-    parser = RegEx(regex_str)
-
-    try:
-        tree = parser.parse()
-        print("Parsed tree:", tree)
-
-        nfa = NFA(tree)
-        nfa.display_transition_table()
-
-        print("just test")
-        print("nfa : " , nfa)
-
-
-    except Exception as e:
-        print("Error:", e)
-        import traceback
-
-        traceback.print_exc()

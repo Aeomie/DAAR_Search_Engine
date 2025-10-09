@@ -17,7 +17,7 @@ class Boyer:
         n = len(text)
         i = 0  # index in text
         word_counter = 0
-
+        word_indexes = []
         while i <= n - self.m:
             j = self.m - 1  # start from right of pattern
 
@@ -28,6 +28,7 @@ class Boyer:
             if j < 0:
                 # match found
                 print("Pattern found at index", i)
+                word_indexes.append(i)
                 word_counter += 1
                 # shift pattern completely after match or default
                 if i + self.m < n:
@@ -37,10 +38,10 @@ class Boyer:
                     i += 1
             else:
                 # mismatch: shift according to bad-character table
-                bad_char = text[i + j]
+                bad_char = text[i + j] # get the character where there was a mismatch
                 i += self.hoops.get(bad_char, self.hoops['*'])
 
-        return word_counter
+        return word_indexes, word_counter
 
 
 
@@ -49,5 +50,6 @@ pattern = "TEST"
 
 matcher = Boyer(pattern)
 print("hoops:", matcher.hoops)
-count = matcher.match_boyer(text)
+indexes,count = matcher.match_boyer(text)
 print("Total matches found:", count)
+print("indexes of matches:", indexes)

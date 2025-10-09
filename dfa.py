@@ -1,14 +1,14 @@
 from nfa import NFA
-from astTree import RegEx, RegExTree, Operation
 
 class DFA:
     def __init__(self, nfa: NFA):
         self.nfa = nfa
-        self.alphabet = [s for s in nfa.alphabet if s != 'ε']
-        self.start_state = None
-        self.final_states = set()
+        self.alphabet = [s for s in nfa.alphabet if s != 'ε']  # DFA alphabet
+        self.start_state = frozenset(self.epsilon_closure(nfa.start_state))
         self.transitions = {}
+        self.final_states = set()
         self.build_dfa()
+        self.detect_final_states()
 
     # -----------------------------
     # Epsilon closure
@@ -22,39 +22,16 @@ class DFA:
 
         while stack:
             state = stack.pop()
-            for symbol, targets in self.nfa.transitions.get(state, {}).items():
-                if symbol == 'ε':
-                    for t in targets:
-                        if t not in closure:
-                            closure.add(t)
-                            stack.append(t)
+            for t in self.nfa.transitions.get(state, {}).get('ε', []):
+                if t not in closure:
+                    closure.add(t)
+                    stack.append(t)
         return closure
-
-    # -----------------------------
-    # Merge transitions for multiple states
-    # -----------------------------
-    def merge_states_transitions(self, states):
-        transitions = {}
-        for state in states:
-            if state == self.nfa.final_state:
-                self.final_states.add(frozenset(states))
-            if state == self.nfa.start_state:
-                self.start_state = frozenset(states)
-            for symbol, targets in self.nfa.transitions.get(state, {}).items():
-                if symbol == 'ε':
-                    continue
-                if symbol not in transitions:
-                    transitions[symbol] = set()
-                transitions[symbol].update(targets)
-        return transitions
 
     # -----------------------------
     # Build DFA
     # -----------------------------
     def build_dfa(self):
-        start_closure = self.epsilon_closure(self.nfa.start_state)
-        self.start_state = frozenset(start_closure)
-
         queue = [self.start_state]
         visited = set()
 
@@ -64,29 +41,32 @@ class DFA:
                 continue
             visited.add(current)
 
-            current_transitions = self.merge_states_transitions(current)
             self.transitions[current] = {}
 
             for symbol in self.alphabet:
-                # All possible NFA states reachable via this symbol
+                # Collect all NFA states reachable by this symbol
                 next_states = set()
                 for s in current:
-                    targets = self.nfa.transitions.get(s, {}).get(symbol, [])
-                    next_states.update(targets)
-
-                # Take epsilon closure of all those
+                    next_states.update(self.nfa.transitions.get(s, {}).get(symbol, []))
+                # Take epsilon closure of the result
                 if next_states:
-                    closure = self.epsilon_closure(next_states)
-                    closure_frozen = frozenset(closure)
-                    self.transitions[current][symbol] = closure_frozen
-
-                    if closure_frozen not in visited and closure_frozen not in queue:
-                        queue.append(closure_frozen)
-
-        return self.transitions
+                    closure = frozenset(self.epsilon_closure(next_states))
+                    self.transitions[current][symbol] = closure
+                    if closure not in visited and closure not in queue:
+                        queue.append(closure)
+                else:
+                    self.transitions[current][symbol] = frozenset()
 
     # -----------------------------
-    # Display DFA Transition Table
+    # Detect DFA final states
+    # -----------------------------
+    def detect_final_states(self):
+        for state in self.transitions:
+            if self.nfa.final_state in state:
+                self.final_states.add(state)
+
+    # -----------------------------
+    # Display DFA transition table
     # -----------------------------
     def display_transition_table(self):
         print("\n=== DFA Transition Table ===")
@@ -98,49 +78,39 @@ class DFA:
         print("-" * len(header))
 
         for state, trans in self.transitions.items():
-            # Pretty state label
             state_label = ",".join(sorted(state))
             marker = ""
             if state == self.start_state:
                 marker += "*"
             if state in self.final_states:
                 marker += ">"
-
             row = f"{state_label:<28}{marker:<2} | "
-
             for symbol in self.alphabet:
-                targets = trans.get(symbol, set())
-                if not targets:
-                    targets_str = "∅"
-                else:
-                    targets_str = ",".join(sorted(targets))
+                targets = trans.get(symbol, frozenset())
+                targets_str = ",".join(sorted(targets)) if targets else "∅"
                 row += f"{targets_str:<15} | "
-
             print(row)
-
         print("\n* for start state, > for final state")
 
     # -----------------------------
-    # Match words
+    # Match word using DFA
     # -----------------------------
     def match_dfa(self, word: str) -> bool:
         current_state = self.start_state
         for char in word:
             if char not in self.alphabet:
-                raise Exception(f"Character '{char}' not in DFA alphabet")
-            next_state = self.transitions.get(current_state, {}).get(char)
-            if not next_state:
                 return False
-            current_state = next_state
+            current_state = self.transitions.get(current_state, {}).get(char, frozenset())
+            if not current_state:
+                return False
         return current_state in self.final_states
+
 
 if __name__ == "__main__":
     regex_str = input("Enter a regex: ")
-    parser = RegEx(regex_str)
 
     try:
-        tree = parser.parse()
-        nfa = NFA(tree)
+        nfa = NFA(regex_str)
         nfa.display_transition_table()
 
         dfa = DFA(nfa)

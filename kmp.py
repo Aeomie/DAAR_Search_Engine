@@ -30,6 +30,7 @@ class KMP:
         match = len(self.pattern)
         i = j = 0
         word_counter = 0
+        word_indexes = []
 
         while i < n:
             if self.pattern[j] == text[i]:
@@ -39,6 +40,7 @@ class KMP:
             if j == match:
                 print("Pattern found at index " + str(i - j))
                 word_counter += 1
+                word_indexes.append(i - j)
                 j = self.lps[j - 1]
             else:
                 if i < n and self.pattern[j] != text[i]:
@@ -46,7 +48,7 @@ class KMP:
                         j = self.lps[j-1] # mismatch
                     else:
                         i += 1
-        return word_counter
+        return word_indexes , word_counter
 
 
 
@@ -55,5 +57,6 @@ pattern = "ABC"
 
 matcher = KMP(pattern)
 print("LPS Table:", matcher.lps)
-count = matcher.kmp(text)
+indexes,count = matcher.kmp(text)
 print("Total matches found:", count)
+print("indexes of matches:", indexes)

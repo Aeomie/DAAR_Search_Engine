@@ -223,13 +223,3 @@ class RegEx:
     def parse(self) -> RegExTree:
         trees = [RegExTree(self.chartoRoot(c)) for c in self.regex]
         return self.parseList(trees)
-
-
-if __name__ == "__main__":
-    regex_str = input("Enter a regex: ")
-    parser = RegEx(regex_str)
-    try:
-        tree = parser.parse()
-        print("Parsed tree:", tree)
-    except Exception as e:
-        print("Error parsing regex:", e)
