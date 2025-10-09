@@ -1,5 +1,4 @@
-from astTree import RegEx, RegExTree, Operation
-
+from search_algorithms.astTree import RegEx, RegExTree, Operation
 
 class NFA:
     def __init__(self, regexPattern: str):

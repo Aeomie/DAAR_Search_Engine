@@ -1,4 +1,4 @@
-from nfa import NFA
+from search_algorithms.nfa import NFA
 
 class DFA:
     def __init__(self, nfa: NFA):

@@ -4,13 +4,12 @@
 from __future__ import annotations
 import sys
 import os
-import re
 import argparse
 from typing import Iterable, Iterator, Optional, Tuple
-from kmp import KMP
-from nfa import NFA
-from dfa import DFA
-from boyer_moore import Boyer
+from search_algorithms.kmp import KMP
+from search_algorithms.nfa import NFA
+from search_algorithms.dfa import DFA
+from search_algorithms.boyer_moore import Boyer
 
 
 # ============================================================
@@ -37,10 +36,13 @@ def engine(pattern: str, file_to_run: str, mode: str,max_matches : int = 0, line
     # Build the matcher
     match mode:
         case "kmp":
+            print("Using KMP algorithm")
             matcher = KMP(pattern)
         case "boyer":
+            print("Using Boyer-Moore algorithm")
             matcher = Boyer(pattern)
         case "regex":
+            print("Using Regex (DFA) algorithm")
             nfa = NFA(pattern)
             matcher = DFA(nfa)
         case _:
