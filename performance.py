@@ -175,10 +175,13 @@ def main():
     print(f"Number of lines in the merged file: {line_counter()}")
 
     if args.mode == "kmp":
+        print(f"[+] Preprocessing KMP pattern: {pattern}")
         algorithm = KMP(pattern)
     elif args.mode == "boyer":
+        print(f"[+] Preprocessing Boyer-Moore pattern: {pattern}")
         algorithm = Boyer(pattern)
     elif args.mode == "regex":
+        print(f"[+] Compiling regex pattern: {pattern}")
         algorithm = DFA(NFA(pattern))
     else:
         sys.stderr.write(f"[ERREUR] Mode inconnu : {args.mode}\n")
@@ -202,7 +205,10 @@ def main():
     save_to_csv(times, filename)
 
     # Save occurrences in a separate summary CSV
-    summary_filename = os.path.join(output_folder, f"{args.mode}_{pattern_clean}_summary.csv")
+    summary_folder = os.path.join(output_folder, "Summaries")
+    os.makedirs(summary_folder, exist_ok=True)
+    summary_filename = os.path.join(summary_folder, f"{args.mode}_{pattern_clean}_summary.csv")
+
     with open(summary_filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Total Occurrences"])
