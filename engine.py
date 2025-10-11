@@ -60,7 +60,7 @@ def engine(pattern: str, file_to_run: str, mode: str,max_matches : int = 0, line
                 line_proc = line_proc.lower()
             match mode:
                 case "kmp":
-                    indexes, count = matcher.kmp(line_proc, max_matches)
+                    indexes, count = matcher.match_kmp(line_proc, max_matches)
                 case "boyer":
                     indexes, count = matcher.match_boyer(line_proc, max_matches)
                 case "regex":
@@ -142,7 +142,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     try:
         pattern = args.pattern.lower() if args.ignore_case else args.pattern
 
-        engine(pattern, args.file, args.mode, args.max_matches, args.line_number,ignore_case=args.ignore_case)
+
     except Exception as e:
         sys.stderr.write(f"[ERREUR] Échec : {e}\n")
         return 2

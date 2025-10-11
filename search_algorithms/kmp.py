@@ -25,7 +25,7 @@ class KMP:
                     i += 1
         return lps
 
-    def kmp(self, text, max_matches = 0):
+    def match_kmp(self, text, max_matches = 0):
         n = len(text)
         match = len(self.pattern)
         i = j = 0
