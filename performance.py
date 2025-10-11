@@ -3,6 +3,9 @@ import os
 import sys
 import time
 import argparse
+import csv
+import re
+from pathlib import Path
 from search_algorithms.kmp import KMP
 from search_algorithms.nfa import NFA
 from search_algorithms.dfa import DFA
@@ -21,68 +24,96 @@ def merge_books(folder="livres", output="merged.txt", ignore_case=False):
     print(f"[+] All books merged into {output}")
 
 
-
 def word_counter(file="merged.txt"):
     with open(file, encoding="utf-8") as f:
         return len(f.read().split())
+
 
 def line_counter(file="merged.txt"):
     with open(file, encoding="utf-8") as f:
         return sum(1 for _ in f)
 
+
 def benchmark_by_words(algorithm, text, step=1000, max_words=50000):
     words = text.split()
     times = []
-    occurences = 0
+    occurrences = 0
     for i in range(step, min(len(words), max_words) + 1, step):
         sample = " ".join(words[:i])
         start = time.perf_counter()
 
         count = 0
-        # Choose the right match function
         if isinstance(algorithm, KMP):
-            indexes , count = algorithm.match_kmp(sample)
+            indexes, count = algorithm.match_kmp(sample)
         elif isinstance(algorithm, Boyer):
-            indexes , count = algorithm.match_boyer(sample)
+            indexes, count = algorithm.match_boyer(sample)
         elif isinstance(algorithm, DFA):
-            indexes , count = algorithm.match_dfa(sample)
+            indexes, count = algorithm.match_dfa(sample)
 
-        occurences += count
+        occurrences += count
         end = time.perf_counter()
         times.append((i, end - start))
-        print(f"{algorithm.__class__.__name__}: {i} words -> {end - start:.5f}s")
+        #print(f"{algorithm.__class__.__name__}: {i} words -> {end - start:.5f}s")
+    return times, occurrences
 
-    return times, occurences
+
+def benchmark_by_words(algorithm, text, step=1000, max_words=50000):
+    """
+    Benchmark the algorithm in increments of words, processing only new words each step.
+    """
+    words = text.split()
+    times = []
+    occurrences = 0
+
+    for start_idx in range(0, min(len(words), max_words), step):
+        end_idx = min(start_idx + step, len(words), max_words)
+        sample = " ".join(words[start_idx:end_idx])  # only new words
+        start_time = time.perf_counter()
+
+        count = 0
+        if isinstance(algorithm, KMP):
+            indexes, count = algorithm.match_kmp(sample)
+        elif isinstance(algorithm, Boyer):
+            indexes, count = algorithm.match_boyer(sample)
+        elif isinstance(algorithm, DFA):
+            indexes, count = algorithm.match_dfa(sample)
+
+        occurrences += count
+        end_time = time.perf_counter()
+        times.append((end_idx, end_time - start_time))
+        #print(f"{algorithm.__class__.__name__}: words {start_idx}-{end_idx} -> {end_time - start_time:.5f}s")
+
+    return times, occurrences
+
+
+
 def benchmark_by_lines(algorithm, file="merged.txt", max_lines=50000):
     """
-    Benchmark the algorithm line by line, reading from the file.
+    Benchmark the algorithm line by line, each line independently.
     """
     times = []
-    lines = []
-    occurences = 0
+    occurrences = 0
 
-    # Read all lines first
     with open(file, encoding="utf-8") as f:
-        lines = f.readlines()
+        for i, line in enumerate(f, start=1):
+            if i > max_lines:
+                break
+            start = time.perf_counter()
 
-    for i in range(1, min(len(lines), max_lines) + 1):
-        sample = "".join(lines[:i])  # combine first i lines
-        start = time.perf_counter()
-        count = 0
-        # Choose the right match function
-        if isinstance(algorithm, KMP):
-            indexes , count = algorithm.match_kmp(sample)
-        elif isinstance(algorithm, Boyer):
-            indexes , count = algorithm.match_boyer(sample)
-        elif isinstance(algorithm, DFA):
-            indexes , count = algorithm.match_dfa(sample)
+            count = 0
+            if isinstance(algorithm, KMP):
+                indexes, count = algorithm.match_kmp(line)
+            elif isinstance(algorithm, Boyer):
+                indexes, count = algorithm.match_boyer(line)
+            elif isinstance(algorithm, DFA):
+                indexes, count = algorithm.match_dfa(line)
 
-        occurences += count
-        end = time.perf_counter()
-        times.append((i, end - start))
-        print(f"{algorithm.__class__.__name__}: {i} lines -> {end - start:.5f}s")
+            occurrences += count
+            end = time.perf_counter()
+            times.append((i, end - start))
+            #print(f"{algorithm.__class__.__name__}: {i} lines -> {end - start:.5f}s")
 
-    return times, occurences
+    return times, occurrences
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -107,34 +138,42 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     p.add_argument("--max", type=int, default=50000,
                    help="Nombre maximal de trucs à lire soit mots soit lignes.")
-
-    # Only relevant for word mode
     p.add_argument("--step", type=int, default=1000,
                    help="Nombre de mots à ajouter à chaque itération (uniquement en mode mots).")
 
     return p
 
 
+def save_to_csv(data, filename="benchmark_results.csv"):
+    file = Path(filename)
+    write_header = not file.exists()
+
+    with open(file, mode="a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(["Units Processed", "Time (s)"])
+        writer.writerows(data)
+
+    print(f"[+] Results saved to {file.resolve()}")
+
+
+# ... (all imports and functions unchanged) ...
 
 def main():
     args = build_arg_parser().parse_args()
 
-    # Default to line mode if neither flag is given
     if not (args.words or args.lines):
         args.lines = True
 
     pattern = args.pattern.lower() if args.ignore_case else args.pattern
 
-    # Merge all book files
     merge_books(args.folder, ignore_case=args.ignore_case)
 
-    # Read merged text
     text = open("merged.txt", encoding="utf-8").read()
 
     print(f"Number of words in the merged file: {word_counter()}")
     print(f"Number of lines in the merged file: {line_counter()}")
 
-    # Select algorithm
     if args.mode == "kmp":
         algorithm = KMP(pattern)
     elif args.mode == "boyer":
@@ -145,19 +184,35 @@ def main():
         sys.stderr.write(f"[ERREUR] Mode inconnu : {args.mode}\n")
         return 2
 
-    occurrence = 0
-    # Run benchmark
+    times, occurrences = ([], 0)
     if args.words:
-        # Step/max_words only relevant for word mode
-        times, occurrence = benchmark_by_words(algorithm, text, step=args.step, max_words=args.max)
+        times, occurrences = benchmark_by_words(algorithm, text, step=args.step, max_words=args.max)
     elif args.lines:
-        times, occurrence = benchmark_by_lines(algorithm, max_lines=args.max)
+        times, occurrences = benchmark_by_lines(algorithm, max_lines=args.max)
 
-    if occurrence > 0:
-        print(f"Total occurrences found: {occurrence}")
-    else:
-        print("No occurrences found.")
+    # Directory where you want to save CSVs
+    output_folder = "TestResultsLines" if args.lines else "TestResultsWords"
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Clean pattern for filenames
+    pattern_clean = args.pattern.strip()
+
+    # Save benchmark CSV
+    filename = os.path.join(output_folder, f"{args.mode}_{pattern_clean}.csv")
+    save_to_csv(times, filename)
+
+    # Save occurrences in a separate summary CSV
+    summary_filename = os.path.join(output_folder, f"{args.mode}_{pattern_clean}_summary.csv")
+    with open(summary_filename, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Total Occurrences"])
+        writer.writerow([occurrences])
+    print(f"[+] Total occurrences saved to {summary_filename}")
+
+    print(f"Total occurrences found: {occurrences}")
+
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
