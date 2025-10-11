@@ -191,7 +191,7 @@ def main():
         times, occurrences = benchmark_by_lines(algorithm, max_lines=args.max)
 
     # Directory where you want to save CSVs
-    output_folder = "TestResultsLines" if args.lines else "TestResultsWords"
+    output_folder = f"TestResultsLines/{args.mode}" if args.lines else f"TestResultsWords/{args.mode}"
     os.makedirs(output_folder, exist_ok=True)
 
     # Clean pattern for filenames
