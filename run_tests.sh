@@ -11,7 +11,10 @@ fi
 
 WORDS_FILE="testWords.txt"
 
-while IFS= read -r word; do
+while IFS= read -r word || [ -n "$word" ]; do
+    word="${word//$'\r'/}"  # remove Windows CR if present
     echo "Testing word: $word"
-    python3 performance.py "$word" -l -m "$MODE" --max "$MAX"
+    python3 performance.py -l -i "$word" -m "$MODE" --max "$MAX"
+    echo "------------------------------"
 done < "$WORDS_FILE"
+echo "All tests completed."
