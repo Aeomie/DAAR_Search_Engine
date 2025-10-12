@@ -70,14 +70,56 @@ usage: pertest [-h] [-f FOLDER] [-m {kmp,boyer,regex}] [-i] [-l | -w] [--max MAX
 
 ## Exemple d’utilisation
 
-**Benchmark par lignes en ignorant la casse et en limitant à 100 000 lignes :**
+Benchmark par lignes en ignorant la casse et en limitant à 100 000 lignes :
 
 ```
 python performance.py --ignore-case --max 100000 the
 ```
 
-**Benchmark par mots dans un dossier spécifique avec Boyer-Moore :**
+Benchmark par mots dans un dossier spécifique avec Boyer-Moore :
 
 ```
-python performance.py -f TestResultsLines -m boyer --words --step 1000 --max 50000 the
+python performance.py -f livres -m boyer --words --step 1000 --max 50000 the
 ```
+
+Benchmark par lignes en ignorant la casse et en limitant à 100 000 lignes pour le mot "responsibility" :
+```bash
+python performance.py -l -i "responsibility" --max 100000  
+```
+
+# Génération des graphes
+
+Pour générer les graphes des algorithmes, utilisez le script `generate_graphs.py`.
+
+Il suffit d’exécuter le fichier dans votre IDE, et vous trouverez les graphes dans le dossier `graphs/`.
+
+Le script contient deux fonctions principales :
+
+- Une fonction pour générer les graphes des trois algorithmes en même temps :
+
+```python
+def plot_comparison_all_modes(modes=['kmp', 'boyer', 'regex'], step=50000, smooth_window=5)
+```
+- Une fonction pour générer le graphe d’un seul algorithme, que vous pouvez spécifier en paramètre
+```python
+def plot_average_graph_all(mode, step=50000, smooth_window=5)
+```
+
+# Pour exécuter les tests unitaires selon un fichier texte qui contient les mots
+
+Pour le moment, le fichier bash exécute tous les fichiers dans le dossier `testWords`.  
+Si vous souhaitez utiliser un autre fichier, il faudra le modifier directement dans le script bash.
+
+Pour être sûr que votre fichier est exécutable, vous pouvez utiliser la commande :
+```bash
+chmod +x run_tests.sh
+```
+Ensuite, lancez le script en lui passant en paramètre l'algorithme et le nombre maximal de lignes à traiter :
+```bash
+./run_tests.sh <mode> <max_lines>
+```
+Exemple pour l’algorithme Boyer-Moore sur 100 000 lignes :
+```bash
+./run_tests.sh boyer 100000
+```
+
