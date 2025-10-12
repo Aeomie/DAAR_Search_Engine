@@ -142,12 +142,22 @@ def main(argv: Optional[list[str]] = None) -> int:
     try:
         pattern = args.pattern.lower() if args.ignore_case else args.pattern
 
+        # Call the engine with the parsed arguments
+        engine(
+            pattern=pattern,
+            file_to_run=args.file,
+            mode=args.mode,
+            max_matches=args.max_matches,
+            line_number=args.line_number,
+            ignore_case=args.ignore_case
+        )
 
     except Exception as e:
         sys.stderr.write(f"[ERREUR] Échec : {e}\n")
         return 2
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
