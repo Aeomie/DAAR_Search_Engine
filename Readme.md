@@ -1,3 +1,12 @@
+## Prérequis
+
+- Un interpréteur Python 3 installé sur le système (`python3` ou `python` selon la configuration).
+- Les dépendances Python listées dans `requirements.txt` (à installer avec `pip install -r requirements.txt`).
+
+> Remarque : Le projet ne contient pas l’environnement virtuel `.venv`. Assurez-vous donc d’avoir un interpréteur Python fonctionnel avant d’exécuter les scripts.
+
+
+
 # Configuration
 pour etre sur que tout fonctionne correctement , il faut éxecuter le makefile , pour installer les libraries malgré que ce sont juste pour les graphes:
 ```bash
