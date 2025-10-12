@@ -1,6 +1,3 @@
-
-
-
 class KMP:
     def __init__(self, pattern):
         self.pattern = pattern
