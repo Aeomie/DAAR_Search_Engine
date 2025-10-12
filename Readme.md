@@ -42,6 +42,7 @@ python engine.py -i --max-matches 10 "motif" fichier.txt
 **Ignorer la casse et limiter à 20 correspondances** :  
 Cherche le motif "the" dans le fichier `pg77012.txt` en utilisant l'algorithme KMP, en ignorant la casse et en limitant les résultats à 20 correspondances tout en affichant les numéros de ligne.
 
+`pg77012.txt` est un fichier contenant un livre.
 ```bash
 python engine.py -n --max-matches 20 -i -m kmp the pg77012.txt
 ```
