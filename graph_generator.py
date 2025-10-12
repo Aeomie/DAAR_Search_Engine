@@ -86,7 +86,7 @@ def plot_comparison_all_modes(modes=['kmp', 'boyer', 'regex'], step=50000, smoot
     """
     plt.figure(figsize=(14, 7))
 
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']  # Different colors for each mode
+    colors = ['#FF6B6B', '#4ECDC4', '#1F3B73']  # Different colors for each mode
 
     for mode, color in zip(modes, colors):
         folder_path = f"TestResultsLines/{mode}/"
@@ -119,12 +119,15 @@ def plot_comparison_all_modes(modes=['kmp', 'boyer', 'regex'], step=50000, smoot
             min_periods=1
         ).mean()
 
-        # Plot smoothed line only
+        # Plot smoothed line with scientific notation in legend
+        avg_time = df["Time (s)"].mean()
         plt.plot(df_avg["Units Processed"], df_avg["Time (s) Smoothed"],
-                 linewidth=2.5, color=color, label=f'{mode.upper()} (avg: {df["Time (s)"].mean():.4f}s)', marker='o',
-                 markersize=3)
+                 linewidth=2.5, color=color,
+                 label=f'{mode.upper()} (avg: {avg_time:.4e}s)',
+                 marker='o', markersize=3)
 
-        print(f"{mode.upper()}: Average time = {df['Time (s)'].mean():.4f}s, {len(df_avg)} bins")
+        # Print in scientific notation
+        print(f"{mode.upper()}: Average time = {avg_time:.4e}s, {len(df_avg)} bins")
 
     plt.title("Search Algorithm Performance Comparison (Smoothed)", fontsize=14, fontweight='bold')
     plt.xlabel("Units Processed", fontsize=12)
