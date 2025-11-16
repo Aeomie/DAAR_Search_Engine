@@ -81,6 +81,49 @@ def engine(pattern: str, file_to_run: str, mode: str,max_matches : int = 0, line
     if not line_number:
         print(f" Total matches found: {total_count} \n Indexes : {all_indexes}")
 
+
+def engine_text(
+    pattern: str,
+    text: str,
+    mode: str,
+    max_matches: int = 0,
+    ignore_case: bool = False,
+    verbose: bool = False
+) -> dict:
+
+    match mode:
+        case "kmp":
+            matcher = KMP(pattern)
+        case "boyer":
+            matcher = Boyer(pattern)
+        case "regex":
+            nfa = NFA(pattern)
+            matcher = DFA(nfa)
+        case _:
+            raise ValueError(f"Unknown mode: {mode}")
+
+    if ignore_case:
+        text = text.lower()
+
+    match mode:
+        case "kmp":
+            indexes, count = matcher.match_kmp(text, max_matches)
+        case "boyer":
+            indexes, count = matcher.match_boyer(text, max_matches)
+        case "regex":
+            indexes, count = matcher.match_dfa(text, max_matches)
+
+    if verbose:
+        return {
+            "total_count": count,
+            "indexes": indexes
+        }
+    else:
+        return {
+            "total_count": count
+        }
+
+
 # ============================================================
 # UTILITIES
 # ============================================================
